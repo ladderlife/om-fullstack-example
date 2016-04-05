@@ -3,5 +3,5 @@
             [om-fullstack-example.client :as client]))
 
 (defn foo []
-  (om/get-query om-fullstack-example.client.Friend))
+  (om/get-query om_fullstack_example.client.Friend))
 
