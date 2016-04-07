@@ -8,65 +8,70 @@
 (defui Friend
   static om/Ident
   (ident [this props]
-    [:person/by-id (:id props)])
+    [:person/by-id (:db/id props)])
   static om/IQuery
   (query [this]
-    [:id :name])
-  Object
-  (render [this]
-    (dom/div "hey")))
+    [:db/id :name]))
 
 (defui Person
   static om/Ident
   (ident [this props]
-    [:person/by-id (:id props)])
+    [:person/by-id (:db/id props)])
   static om/IQuery
   (query [this]
-    [:id :name {:friends (om/get-query Friend)}]))
+    [:db/id :user/name {:user/friends (om/get-query Friend)}]))
 
 (defui People
   static om/IQuery
   (query [this]
     [{:people (om/get-query Person)}]))
 
+(defn get-query []
+  (om/get-query People))
+
 (defmulti read om/dispatch)
 
 (defmethod read :people
-  [{:keys [state query] :as env} key _]
-  (let [st @state]
-    {:value (om/db->tree query (get st key) st)}))
+  [{:keys [state query]} _ _]
+  ;; HACK
+  (let [st @state
+        query (mapv #(if (keyword? %) % (first (keys %))) query)]
+    (if (contains? st :person/by-id)
+      {:value (->> st :person/by-id vals
+                (mapv #(select-keys % query)))}
+      {:remote true})))
 
 (defmulti mutate om/dispatch)
 
 (defn add-friend [state id friend]
+  (println "add-friend" id friend)
   (letfn [(add* [friends ref]
-            (cond-> friends
+            (cond-> (or friends [])
                     (not (some #{ref} friends)) (conj ref)))]
     (if-not (= id friend)
       (-> state
-          (update-in [:person/by-id id :friends]
+          (update-in [:person/by-id id :user/friends]
                      add* [:person/by-id friend])
-          (update-in [:person/by-id friend :friends]
+          (update-in [:person/by-id friend :user/friends]
                      add* [:person/by-id id]))
       friend)))
 
 (defmethod mutate 'friend/add
   [{:keys [state] :as env} key {:keys [id friend] :as params}]
-  {:action
+  {:remote true
+   :action
    (fn [] (swap! state add-friend id friend))})
 
-(defn remove-friend [state id friend]
-  (letfn [(remove* [friends ref]
-            (cond->> friends
-                     (some #{ref} friends) (into [] (remove #{ref}))))]
-    (if-not (= id friend)
-      (-> state
-          (update-in [:person/by-id id :friends]
-                     remove* [:person/by-id friend])
-          (update-in [:person/by-id friend :friends]
-                     remove* [:person/by-id id]))
-      state)))
+(defn make-parser
+  []
+  (om/parser {:read read :mutate mutate}))
 
-(defmethod mutate 'friend/remove
-  [{:keys [state] :as env} key {:keys [id friend] :as params}]
-  {:action (fn [] (swap! state remove-friend id friend))})
+(defn tree->db
+  [tree]
+  (if-let [people (:people tree)]
+    {:person/by-id (into {} (map (juxt :db/id identity) people))}
+    tree))
+
+(defn merge-state
+  [state novelty]
+  (merge-with merge state novelty))
