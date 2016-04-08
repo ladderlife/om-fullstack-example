@@ -11,7 +11,7 @@
     [:person/by-id (:db/id props)])
   static om/IQuery
   (query [this]
-    [:db/id :name]))
+    [:db/id :user/name]))
 
 (defui Person
   static om/Ident
@@ -44,9 +44,8 @@
 (defmulti mutate om/dispatch)
 
 (defn add-friend [state id friend]
-  (println "add-friend" id friend)
   (letfn [(add* [friends ref]
-            (cond-> (or friends [])
+            (cond-> friends
                     (not (some #{ref} friends)) (conj ref)))]
     (if-not (= id friend)
       (-> state
@@ -54,7 +53,7 @@
                      add* [:person/by-id friend])
           (update-in [:person/by-id friend :user/friends]
                      add* [:person/by-id id]))
-      friend)))
+      state)))
 
 (defmethod mutate 'friend/add
   [{:keys [state] :as env} key {:keys [id friend] :as params}]
@@ -66,10 +65,15 @@
   []
   (om/parser {:read read :mutate mutate}))
 
+(defn replace-friends
+  [{:keys [user/friends] :as elem}]
+  (update elem :user/friends
+          #(mapv (fn [{:keys [db/id]}] [:person/by-id id]) %)))
+
 (defn tree->db
   [tree]
   (if-let [people (:people tree)]
-    {:person/by-id (into {} (map (juxt :db/id identity) people))}
+    {:person/by-id (into {} (map (juxt :db/id replace-friends) people))}
     tree))
 
 (defn merge-state

@@ -20,15 +20,16 @@
         ids (all-user-ids db)]
     {:value (d/pull-many db query ids)}))
 
-
 (defmulti mutate om/dispatch)
 
 (defmethod mutate 'friend/add
-  [{:keys [conn]} key {:keys [id friend]}]
+  [{:keys [conn]} _ {:keys [id friend]}]
   {:action
    (fn []
-     @(d/transact conn [{:db/id id :user/friends friend}
-                        #_{:db/id friend :user/friends id}])
+     @(d/transact
+        conn
+       [{:db/id id :user/friends friend}
+        {:db/id friend :user/friends id}])
      nil)})
 
 ;;; Public

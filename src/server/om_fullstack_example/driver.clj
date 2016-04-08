@@ -32,7 +32,6 @@
 (defn transact
   "Applies mutations"
   [env state mutations reads]
-  (println "transact" state mutations)
   (let [pending-state (next-local-state state mutations)
         pending-tree (state->tree pending-state reads)
         final-state (sync-to-new-state env pending-state (vec (concat mutations reads)))
