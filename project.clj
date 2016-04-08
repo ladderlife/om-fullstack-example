@@ -9,5 +9,6 @@
                  [org.clojure/clojurescript "1.8.34"]
                  [org.clojure/test.check "0.9.0"]
                  [org.omcljs/om "1.0.0-alpha31"]
+                 [com.stuartsierra/component "0.3.1"]
                  [com.datomic/datomic-free "0.9.5350"]
                  [com.ladderlife/cellophane "0.2.3"]])

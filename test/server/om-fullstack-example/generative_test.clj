@@ -11,20 +11,6 @@
     [om-fullstack-example.driver :refer [drive]]
     [cellophane.next :as om]))
 
-(defn no-self-friending?
-  [{:keys [people]}]
-  (letfn [(self-friend? [{:keys [db/id user/friends]}]
-            (contains? (set (map :db/id friends)) id))]
-    (not (some self-friend? people))))
-
-(defn friends-consistent?
-  [{:keys [people]}]
-  (let [indexed (zipmap (map :id people) people)]
-    (letfn [(consistent? [[id {:keys [friends]}]]
-              (let [xs (map (comp :friends indexed :id) friends)]
-                (every? #(some #{id} (map :id %)) xs)))]
-      (every? consistent? indexed))))
-
 (def gen-tx-add-remove
   (gen/vector
     (gen/fmap seq
@@ -39,10 +25,25 @@
   [input]
   (vals (select-keys input [:pending-tree :final-tree :refresh-tree])))
 
+(defn no-self-friending?
+  [{:keys [people]}]
+  (letfn [(self-friend? [{:keys [db/id user/friends]}]
+            (contains? (set (map :db/id friends)) id))]
+    (not (some self-friend? people))))
+
 (def prop-no-self-friending
   (prop/for-all [tx gen-tx-add-remove]
                 (every? no-self-friending?
                         (all-ui-trees (drive tx)))))
+
+(defn friends-consistent?
+  [{:keys [people]}]
+  (let [indexed (zipmap (map :id people) people)]
+    (letfn [(consistent? [[id {:keys [friends]}]]
+              (let [xs (map (comp :friends indexed :id) friends)]
+                (every? #(some #{id} (map :id %)) xs)))]
+      (every? consistent? indexed))))
+
 
 (def prop-friend-consistency
   (prop/for-all [tx gen-tx-add-remove]
@@ -53,7 +54,18 @@
   (prop/for-all [tx gen-tx-add-remove]
                 (apply = (all-ui-trees (drive tx)))))
 
+(defn one-email-per-friending?
+  [{:keys [people]} emails-sent]
+  (= (/ (count (apply concat (map :user/friends people))) 2)
+     (count emails-sent)))
+
+(def prop-one-email-per-friend
+  (prop/for-all [tx gen-tx-add-remove]
+                (let [{:keys [final-tree emails-sent]} (drive tx)]
+                  (one-email-per-friending? final-tree emails-sent))))
+
 (comment
   (tc/quick-check 10 prop-friend-consistency)
   (tc/quick-check 10 prop-no-self-friending)
-  (tc/quick-check 10 prop-synced))
+  (tc/quick-check 10 prop-synced)
+  (tc/quick-check 10 prop-one-email-per-friend))

@@ -42,7 +42,7 @@
       {:final-tree final-tree
        :refresh-tree refresh-tree
        :pending-tree pending-tree
-       :emails-sent "TODO"})))
+       :emails-sent (-> env :email :emails-sent deref)})))
 
 (defn drive*
   [env full-client-read-query mutations]
