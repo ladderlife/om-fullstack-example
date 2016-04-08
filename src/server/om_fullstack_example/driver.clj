@@ -53,16 +53,18 @@
           elems
           (transact env (or (last elems) {})
                     mutations full-client-read-query))))
-    []
+    [(sync-to-new-state env {} full-client-read-query)]
     (vec (cons nil mutations))))
+
+(def id? "HACK" integer?)
 
 (defn replace-tempids
   "HACK"
   [all-ids mutations]
-  (let [temp-ids (filter om/tempid? (set (flatten (map (comp vals second) mutations))))
+  (let [temp-ids (filter id? (set (flatten (map (comp vals second) mutations))))
         _ (assert (<= (count temp-ids) (count all-ids)))
         temp->id (zipmap temp-ids all-ids)]
-    (walk/postwalk (fn [e] (if (om/tempid? e) (temp->id e) e)) mutations)))
+    (walk/postwalk (fn [e] (if (id? e) (temp->id e) e)) mutations)))
 
 (defn drive
   [mutations]

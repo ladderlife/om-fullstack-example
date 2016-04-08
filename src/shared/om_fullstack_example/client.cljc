@@ -45,8 +45,10 @@
 
 (defn add-friend [state id friend]
   (letfn [(add* [friends ref]
-            (cond-> friends
-                    (not (some #{ref} friends)) (conj ref)))]
+            (as-> friends $
+                  (cond-> $ (not (some #{ref} friends)) (conj ref))
+                  (sort-by second $)
+                  (vec $)))]
     (if-not (= id friend)
       (-> state
           (update-in [:person/by-id id :user/friends]

@@ -31,21 +31,29 @@
               (gen/tuple
                 (gen/elements '[friend/add])
                 (gen/fmap (fn [[n m]] {:id n :friend m})
-                          (let [ids (mapv om/tempid [0 1 2])]
+                          (let [ids [0 1 2]]
                             (gen/tuple (gen/elements ids)
                                        (gen/elements ids))))))))
 
-(defn test-pred
-  [predicate tx]
-  (let [{:keys [pending-tree final-tree refresh-tree]} (drive tx)]
-    (every? predicate [pending-tree final-tree refresh-tree])))
+(defn all-ui-trees
+  [input]
+  (vals (select-keys input [:pending-tree :final-tree :refresh-tree])))
 
 (def prop-no-self-friending
-  (prop/for-all [tx gen-tx-add-remove] (test-pred no-self-friending? tx)))
+  (prop/for-all [tx gen-tx-add-remove]
+                (every? no-self-friending?
+                        (all-ui-trees (drive tx)))))
 
 (def prop-friend-consistency
-  (prop/for-all [tx gen-tx-add-remove] (test-pred friends-consistent? tx)))
+  (prop/for-all [tx gen-tx-add-remove]
+                (every? friends-consistent?
+                        (all-ui-trees (drive tx)))))
+
+(def prop-synced
+  (prop/for-all [tx gen-tx-add-remove]
+                (apply = (all-ui-trees (drive tx)))))
 
 (comment
   (tc/quick-check 10 prop-friend-consistency)
-  (tc/quick-check 10 prop-no-self-friending))
+  (tc/quick-check 10 prop-no-self-friending)
+  (tc/quick-check 10 prop-synced))

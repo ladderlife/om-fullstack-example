@@ -26,10 +26,11 @@
   [{:keys [conn]} _ {:keys [id friend]}]
   {:action
    (fn []
-     @(d/transact
-        conn
-       [{:db/id id :user/friends friend}
-        {:db/id friend :user/friends id}])
+     (when (not= id friend)
+       @(d/transact
+          conn
+         [{:db/id id :user/friends friend}
+          {:db/id friend :user/friends id}]))
      nil)})
 
 ;;; Public
