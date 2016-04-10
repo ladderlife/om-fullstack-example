@@ -66,6 +66,6 @@
   [mutations]
   (let [env (api/running-system :test)
         mutations (replace-tempids (api/all-ids env) mutations)
-        full-client-query (client/get-query)
+        full-client-query (client/root-query)
         start-state (sync-to-new-state env {} full-client-query)]
     (meta (last (drive* env start-state full-client-query mutations)))))

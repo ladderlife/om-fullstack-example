@@ -12,8 +12,11 @@
                  [ring/ring "1.4.0"]
                  [com.stuartsierra/component "0.3.1"]
                  [com.datomic/datomic-free "0.9.5350"]
+                 [com.cemerick/piggieback "0.2.1"]
+                 [org.clojure/tools.nrepl "0.2.10"]
                  [figwheel-sidecar "0.5.1"]
                  [com.ladderlife/cellophane "0.2.3"]]
+  :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
   :cljsbuild {:builds [{:id "client"
                         :source-paths ["src/shared"]
                         :figwheel true

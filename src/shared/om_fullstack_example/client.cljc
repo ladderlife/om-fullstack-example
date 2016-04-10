@@ -16,7 +16,13 @@
     [:person/by-id (:db/id props)])
   static om/IQuery
   (query [this]
-    [:db/id :user/name]))
+    [:db/id :user/name])
+  Object
+  (render [this]
+    (let [{:keys [user/name]} (om/props this)]
+      (dom/p nil name))))
+
+(def friend (om/factory Friend))
 
 (defui Person
   static om/Ident
@@ -24,7 +30,16 @@
     [:person/by-id (:db/id props)])
   static om/IQuery
   (query [this]
-    [:db/id :user/name {:user/friends (om/get-query Friend)}]))
+    [:db/id :user/name {:user/friends (om/get-query Friend)}])
+  Object
+  (render [this]
+    (let [{:keys [db/id user/name user/friends]} (om/props this)]
+      (dom/div nil
+        (dom/p nil name)
+        (apply dom/ul nil
+          (map friend friends))))))
+
+(def person (om/factory Person))
 
 (defui People
   static om/IQuery
@@ -32,9 +47,12 @@
     [{:people (om/get-query Person)}])
   Object
   (render [this]
-    (dom/div nil "hey")))
+    (let [{:keys [people]} (om/props this)]
+      (dom/div nil
+        (apply dom/ul nil
+          (map person people))))))
 
-(defn get-query []
+(defn root-query []
   (om/get-query People))
 
 (defmulti read om/dispatch)
@@ -93,16 +111,23 @@
 #?(:cljs (defn send
            "SECURITY: alert! danger! use of `read-string`
            TODO: use transit instead of edn"
-           [edn cb]
-           (let [payload (pr-str (:remote edn))
-                 xhr-cb (fn [_] (this-as this (cb (read-string (.getResponseText this)))))]
+           [query cb]
+           (let [payload (pr-str (:remote query))
+                 xhr-cb (fn [_]
+                          (this-as this
+                            (let [res (read-string (.getResponseText this))]
+                              (println "res" res)
+                              (cb res query))))]
              (.send XhrIo "/api" xhr-cb "POST" payload))))
 
+(defonce app-state (atom {}))
+
 #?(:cljs
-    (let [app-state (atom {})
-          reconciler
+    (let [reconciler
           (om/reconciler {:state  app-state
                           :parser (om/parser {:read read :mutate mutate})
+                          :merge-tree (fn [old new-tree]
+                                        (merge-state old (tree->db new-tree)))
                           :send   send})]
       (om/add-root!
         reconciler

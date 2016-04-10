@@ -59,4 +59,7 @@
 
 (comment
   (def s (start))
+
+  (sys/cljs-repl (:figwheel s))
+
   (component/stop s))
