@@ -1,4 +1,4 @@
-(ns om-fullstack-tests.generative-test
+(ns om-fullstack-tests.property-test
   (:refer-clojure :exclude [read])
   (:require
     [clojure.test.check :as tc]
@@ -23,7 +23,7 @@
 
 (defn all-ui-trees
   [input]
-  (vals (select-keys input [:pending-tree :final-tree :refresh-tree])))
+  (vals (select-keys input [:optimistic-tree :final-tree :refresh-tree])))
 
 (defn no-self-friending?
   [{:keys [people]}]

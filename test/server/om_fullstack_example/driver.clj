@@ -30,31 +30,27 @@
     (client/merge-state state (client/tree->db remote-response))))
 
 (defn transact
-  "Applies mutations"
+  "Applies mutations generating next state"
   [env state mutations reads]
-  (let [pending-state (next-local-state state mutations)
-        pending-tree (state->tree pending-state reads)
-        final-state (sync-to-new-state env pending-state (vec (concat mutations reads)))
+  (let [optimistic-state (next-local-state state mutations)
+        optimistic-tree (state->tree optimistic-state reads)
+        final-state (sync-to-new-state env optimistic-state (vec (concat mutations reads)))
         final-tree (state->tree final-state reads)
         refresh-tree (state->tree (sync-to-new-state env {} reads) reads)]
     (with-meta
       final-state
       {:final-tree final-tree
        :refresh-tree refresh-tree
-       :pending-tree pending-tree
+       :optimistic-tree optimistic-tree
        :emails-sent (-> env :email :emails-sent deref)})))
 
 (defn drive*
-  [env full-client-read-query mutations]
+  [server-system start-state full-client-query mutations]
   (reduce
-    (fn [elems mutation]
-      (let [mutations (if mutation [mutation] [])]
-        (conj
-          elems
-          (transact env (or (last elems) {})
-                    mutations full-client-read-query))))
-    [(sync-to-new-state env {} full-client-read-query)]
-    (vec (cons nil mutations))))
+    (fn [prev-state mutation]
+      (transact server-system prev-state [mutation] full-client-query))
+    start-state
+    mutations))
 
 (def id? "HACK" integer?)
 
@@ -68,6 +64,8 @@
 
 (defn drive
   [mutations]
-  (let [env (api/test-env)
-        mutations (replace-tempids (api/all-ids env) mutations)]
-    (meta (last (drive* env (client/get-query) mutations)))))
+  (let [env (api/running-system :test)
+        mutations (replace-tempids (api/all-ids env) mutations)
+        full-client-query (client/get-query)
+        start-state (sync-to-new-state env {} full-client-query)]
+    (meta (last (drive* env start-state full-client-query mutations)))))

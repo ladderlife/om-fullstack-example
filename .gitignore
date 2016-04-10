@@ -1,4 +1,6 @@
 .idea/
 target/
 *.iml
+*.log
 .nrepl-port
+resources/public/js

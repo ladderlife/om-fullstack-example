@@ -1,9 +1,14 @@
 (ns om-fullstack-example.client
   (:refer-clojure :exclude [read])
   (:require #?@(:cljs [[om.next :as om :refer-macros [defui]]
-                       [om.dom :as dom]]
+                       [om.dom :as dom]
+                       [cljs.reader :refer [read-string]]
+                       [goog.dom :as gdom]]
                 :clj [[cellophane.next :as om :refer [defui]]
-                      [cellophane.dom :as dom]])))
+                      [cellophane.dom :as dom]]))
+  #?(:cljs (:import [goog.net XhrIo])))
+
+#?(:cljs (enable-console-print!))
 
 (defui Friend
   static om/Ident
@@ -24,7 +29,10 @@
 (defui People
   static om/IQuery
   (query [this]
-    [{:people (om/get-query Person)}]))
+    [{:people (om/get-query Person)}])
+  Object
+  (render [this]
+    (dom/div nil "hey")))
 
 (defn get-query []
   (om/get-query People))
@@ -81,3 +89,21 @@
 (defn merge-state
   [state novelty]
   (merge-with merge state novelty))
+
+#?(:cljs (defn send
+           "SECURITY: alert! danger! use of `read-string`
+           TODO: use transit instead of edn"
+           [edn cb]
+           (let [payload (pr-str (:remote edn))
+                 xhr-cb (fn [_] (this-as this (cb (read-string (.getResponseText this)))))]
+             (.send XhrIo "/api" xhr-cb "POST" payload))))
+
+#?(:cljs
+    (let [app-state (atom {})
+          reconciler
+          (om/reconciler {:state  app-state
+                          :parser (om/parser {:read read :mutate mutate})
+                          :send   send})]
+      (om/add-root!
+        reconciler
+        People (gdom/getElement "app"))))
