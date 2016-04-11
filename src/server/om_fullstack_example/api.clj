@@ -108,13 +108,8 @@
   {:action
    (fn []
      (when (not= id friend)
-       (let [{:keys [tx-data]}
-             @(d/transact
-                conn
-                [{:db/id id :user/friends friend}
-                 {:db/id friend :user/friends id}])]
-         (when (= 3 (count tx-data))
-           (send email "You have a new friend!" friend id))))
+       @(d/transact conn [{:db/id id :user/friends friend}])
+       (send email "You have a new friend!" friend id))
      nil)})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
