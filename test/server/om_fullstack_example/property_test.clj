@@ -52,9 +52,11 @@
 
 (def prop-synced
   (prop/for-all [tx gen-tx-add-remove]
-                (apply = (all-ui-trees (drive tx)))))
+                (apply = (rest (all-ui-trees (drive tx))))))
 
 (defn one-email-per-friending?
+  "Naively checks that total number of emails sent is equal to
+  half of the number of friendships."
   [{:keys [people]} emails-sent]
   (= (/ (count (apply concat (map :user/friends people))) 2)
      (count emails-sent)))
@@ -65,7 +67,12 @@
                   (one-email-per-friending? final-tree emails-sent))))
 
 (comment
+
+  ;; sample generator
+  (gen/sample gen-tx-add-remove 10)
+
   (tc/quick-check 10 prop-friend-consistency)
   (tc/quick-check 10 prop-no-self-friending)
-  (tc/quick-check 10 prop-synced)
-  (tc/quick-check 10 prop-one-email-per-friend))
+
+  (tc/quick-check 10 prop-one-email-per-friend)
+  (tc/quick-check 100 prop-synced))
