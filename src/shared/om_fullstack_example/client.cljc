@@ -20,7 +20,7 @@
   Object
   (render [this]
     (let [{:keys [user/name]} (om/props this)]
-      (dom/p nil name))))
+      (dom/div nil name))))
 
 (def friend (om/factory Friend))
 
@@ -34,22 +34,40 @@
   Object
   (render [this]
     (let [{:keys [db/id user/name user/friends]} (om/props this)]
-      (dom/div nil
-        (dom/p nil name)
-        (apply dom/ul nil
+      (dom/div #js {:style #js {:backgroundColor "lightgrey"
+                                :padding 10 :margin 5}}
+        (dom/div #js {:style #js {:fontWeight "bold"}} name)
+        (apply dom/div #js {:style #js {:padding "0 5px"}}
           (map friend friends))))))
 
 (def person (om/factory Person))
+
+#?(:cljs
+   (defn listen-for-friending
+     [this]
+     (let [last-press (atom nil)
+           {:keys [people]} (om/props this)
+           keypress (fn [code]
+                      (let [number (- code 49)
+                            last-two [number @last-press]
+                            valid-index? (partial contains? (set (range (count people))))]
+                        (if (every? valid-index? last-two)
+                          (let [ids (map (comp :db/id people) last-two)]
+                            (reset! last-press nil)
+                            (om/transact! this `[(friend/add {:id ~(first ids) :friend ~(last ids)})]))
+                          (reset! last-press number))))]
+       (.addEventListener js/document "keypress" (fn [e] (keypress (.-keyCode e)))))))
 
 (defui People
   static om/IQuery
   (query [this]
     [{:people (om/get-query Person)}])
   Object
+  #?(:cljs (componentDidMount [this] (listen-for-friending this)))
   (render [this]
     (let [{:keys [people]} (om/props this)]
       (dom/div nil
-        (apply dom/ul nil
+        (apply dom/div nil
           (map person people))))))
 
 (defn root-query []
@@ -58,13 +76,10 @@
 (defmulti read om/dispatch)
 
 (defmethod read :people
-  [{:keys [state query]} _ _]
-  ;; HACK
-  (let [st @state
-        query (mapv #(if (keyword? %) % (first (keys %))) query)]
+  [{:keys [state query]} k _]
+  (let [st @state]
     (if (contains? st :person/by-id)
-      {:value (->> st :person/by-id vals
-                (mapv #(select-keys % query)))}
+      {:value (om/db->tree query (get st k) st)}
       {:remote true})))
 
 (defmulti mutate om/dispatch)
@@ -93,20 +108,13 @@
   []
   (om/parser {:read read :mutate mutate}))
 
-(defn replace-friends
-  [{:keys [user/friends] :as elem}]
-  (update elem :user/friends
-          #(mapv (fn [{:keys [db/id]}] [:person/by-id id]) %)))
-
-(defn tree->db
-  [tree]
-  (if-let [people (:people tree)]
-    {:person/by-id (into {} (map (juxt :db/id replace-friends) people))}
-    tree))
-
 (defn merge-state
   [state novelty]
   (merge-with merge state novelty))
+
+(defn tree->db
+  [tree]
+  (om/tree->db People tree true))
 
 #?(:cljs (defn send
            "SECURITY: alert! danger! use of `read-string`
@@ -116,7 +124,6 @@
                  xhr-cb (fn [_]
                           (this-as this
                             (let [res (read-string (.getResponseText this))]
-                              (println "res" res)
                               (cb res query))))]
              (.send XhrIo "/api" xhr-cb "POST" payload))))
 
@@ -126,6 +133,7 @@
     (let [reconciler
           (om/reconciler {:state  app-state
                           :parser (om/parser {:read read :mutate mutate})
+                          :normalize true
                           :merge-tree (fn [old new-tree]
                                         (merge-state old (tree->db new-tree)))
                           :send   send})]
