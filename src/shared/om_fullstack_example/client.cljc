@@ -132,7 +132,7 @@
 #?(:cljs
     (let [reconciler
           (om/reconciler {:state  app-state
-                          :parser (om/parser {:read read :mutate mutate})
+                          :parser (make-parser)
                           :normalize true
                           :merge-tree (fn [old new-tree]
                                         (merge-state old (tree->db new-tree)))
