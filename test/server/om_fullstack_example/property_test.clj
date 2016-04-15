@@ -11,7 +11,7 @@
     [om-fullstack-example.driver :refer [drive]]
     [cellophane.next :as om]))
 
-(def gen-tx-add-remove
+(def gen-tx-add
   (gen/vector
     (gen/fmap seq
               (gen/tuple
@@ -32,7 +32,7 @@
     (not (some self-friend? people))))
 
 (def prop-no-self-friending
-  (prop/for-all [tx gen-tx-add-remove]
+  (prop/for-all [tx gen-tx-add]
                 (every? no-self-friending?
                         (all-ui-trees (drive tx)))))
 
@@ -46,12 +46,12 @@
 
 
 (def prop-friend-consistency
-  (prop/for-all [tx gen-tx-add-remove]
+  (prop/for-all [tx gen-tx-add]
                 (every? friends-consistent?
                         (all-ui-trees (drive tx)))))
 
 (def prop-synced
-  (prop/for-all [tx gen-tx-add-remove]
+  (prop/for-all [tx gen-tx-add]
                 (let [{:keys [final-tree refresh-tree]} (drive tx)]
                   (= final-tree refresh-tree))))
 
@@ -63,7 +63,7 @@
      (count emails-sent)))
 
 (def prop-one-email-per-friend
-  (prop/for-all [tx gen-tx-add-remove]
+  (prop/for-all [tx gen-tx-add]
                 (let [{:keys [final-tree emails-sent]} (drive tx)]
                   (one-email-per-friending? final-tree emails-sent))))
 
@@ -71,7 +71,7 @@
 
   ;; sample generators
   (gen/sample (gen/vector gen/int) 10)
-  (gen/sample gen-tx-add-remove 10)
+  (gen/sample gen-tx-add 10)
 
   (tc/quick-check 10 prop-friend-consistency)
   (tc/quick-check 10 prop-no-self-friending)
