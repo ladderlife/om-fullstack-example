@@ -28,4 +28,5 @@
 
 (comment
   ; 1000 user actions in less than a second
-  (time (drive (repeat 1000 `(friend/add {:id 1 :friend 2})))))
+  (time (do (drive (repeat 1000 `(friend/add {:id 1 :friend 2})))
+            nil)))
