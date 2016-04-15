@@ -52,7 +52,8 @@
 
 (def prop-synced
   (prop/for-all [tx gen-tx-add-remove]
-                (apply = (rest (all-ui-trees (drive tx))))))
+                (let [{:keys [final-tree refresh-tree]} (drive tx)]
+                  (= final-tree refresh-tree))))
 
 (defn one-email-per-friending?
   "Naively checks that total number of emails sent is equal to
@@ -68,11 +69,12 @@
 
 (comment
 
-  ;; sample generator
+  ;; sample generators
+  (gen/sample (gen/vector gen/int) 10)
   (gen/sample gen-tx-add-remove 10)
 
   (tc/quick-check 10 prop-friend-consistency)
   (tc/quick-check 10 prop-no-self-friending)
 
-  (tc/quick-check 10 prop-one-email-per-friend)
-  (tc/quick-check 100 prop-synced))
+  (tc/quick-check 10 prop-synced)
+  (tc/quick-check 10 prop-one-email-per-friend))
