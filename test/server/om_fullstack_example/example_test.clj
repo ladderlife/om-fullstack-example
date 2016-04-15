@@ -25,3 +25,8 @@
              optimistic-tree final-tree refresh-tree)))
     (testing "we send a notification email"
       (is (= emails-sent [{:subject "You have a new friend!" :to 2 :from 1}])))))
+
+(comment
+  ; 1000 user actions in less than a second
+  (time (do (drive (repeat 1000 `(friend/add {:id 1 :friend 2})))
+            nil)))
